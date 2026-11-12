@@ -277,7 +277,7 @@ T.ToolBar {
             visible: (x > navigationButtons.x + navigationButtons.width)
                      && (x + width < playqueueButtonsTop.x)
 
-            text: qsTr("VLC Media Player")
+            text: qsTr("Claude VLC")
             color: theme.fg.secondary
             font.pixelSize: VLCStyle.dp(13, VLCStyle.scale)
         }
