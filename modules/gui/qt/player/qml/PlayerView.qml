@@ -954,7 +954,8 @@ FocusScope {
                   resumeVisible)
 
         focus: true
-        title: Player.title
+        // fall back to the file name when the media has no title tag
+        title: Player.title || decodeURIComponent(String(Player.url).split('/').pop())
 
         pinControls: MainCtx.pinVideoControls
 
@@ -1296,9 +1297,7 @@ FocusScope {
         leftPadding: VLCStyle.applicationHorizontalMargin
         bottomPadding: VLCStyle.applicationVerticalMargin + VLCStyle.margin_xsmall
 
-        textPosition: (MainCtx.pinVideoControls)
-                      ? ControlBar.TimeTextPosition.LeftRightSlider
-                      : ControlBar.TimeTextPosition.AboveSlider
+        textPosition: ControlBar.TimeTextPosition.Inline
 
         // hide right text so that it won't overlap with play queue
         showRemainingTime: (textPosition !== ControlBar.TimeTextPosition.AboveSlider)

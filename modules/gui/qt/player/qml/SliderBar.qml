@@ -41,7 +41,12 @@ T.ProgressBar {
     property bool _currentChapterHovered: false
     property real _tooltipPosition: (Widgets.PointingToolTipAttached.instance?.pos.x ?? 0.0) / width
 
-    property color backgroundColor: theme.bg.primary
+    // Block style: a thick rounded well with an inset progress fill and
+    // an always visible bar handle
+    property bool blockStyle: false
+    readonly property real _blockInset: VLCStyle.dp(2, VLCStyle.scale)
+
+    property color backgroundColor: blockStyle ? theme.bg.secondary : theme.bg.primary
     property real touchHandlerMargin: VLCStyle.touchHandlerMargin
 
     Keys.onRightPressed: Player.jumpFwd()
@@ -323,7 +328,7 @@ T.ProgressBar {
             visible: !Player.hasChapters
             color: control.backgroundColor
             anchors.fill: parent
-            radius: implicitHeight
+            radius: control.blockStyle ? VLCStyle.dp(6, VLCStyle.scale) : implicitHeight
         }
 
         Repeater {
@@ -428,11 +433,14 @@ T.ProgressBar {
 
         Rectangle {
             id: progressRect
-            width: control.visualPosition * parent.width
+            x: control.blockStyle ? control._blockInset : 0
+            y: x
+            width: control.blockStyle ? Math.max(0, control.visualPosition * parent.width - x)
+                                      : control.visualPosition * parent.width
             visible: !Player.hasChapters
-            color: theme.fg.primary
-            height: control.barHeight
-            radius: control._seekPointsRadius
+            color: control.blockStyle ? Qt.alpha(theme.fg.primary, 0.25) : theme.fg.primary
+            height: control.barHeight - 2 * y
+            radius: control.blockStyle ? VLCStyle.dp(4, VLCStyle.scale) : control._seekPointsRadius
 
             // We use dynamic mutability group because time interpolation
             // may induce rapid change:
@@ -569,12 +577,13 @@ T.ProgressBar {
 
         property int _size: control.barHeight * 3
 
-        x: (control.visualPosition * control.availableWidth) - width / 2
+        x: control.blockStyle ? Math.max(control._blockInset, control.visualPosition * control.availableWidth - width)
+                              : (control.visualPosition * control.availableWidth) - width / 2
         y: (control.barHeight - height) / 2
 
-        implicitWidth: sliderHandle._size
-        implicitHeight: sliderHandle._size
-        radius: VLCStyle.margin_small
+        implicitWidth: control.blockStyle ? VLCStyle.dp(8, VLCStyle.scale) : sliderHandle._size
+        implicitHeight: control.blockStyle ? control.barHeight - 2 * control._blockInset : sliderHandle._size
+        radius: control.blockStyle ? VLCStyle.dp(4, VLCStyle.scale) : VLCStyle.margin_small
         color: theme.fg.primary
 
         // We use dynamic mutability group because time interpolation
@@ -624,7 +633,8 @@ T.ProgressBar {
             }
         ]
 
-        state: (hoverHandler.hovered || control.visualFocus)
+        state: control.blockStyle ? ""
+               : (hoverHandler.hovered || control.visualFocus)
                ? ((control._currentChapterHovered || (Player.hasChapters && fsm._state === fsm.fsmHeld)) ? "visibleLarge" : "visible")
                : "hidden"
     }

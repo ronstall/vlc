@@ -97,8 +97,84 @@ T.Pane {
         Widgets.SliderExt {
             id: volControl
 
-            // FIXME: use VLCStyle
-            implicitWidth: VLCStyle.dp(100, VLCStyle.scale)
+            implicitWidth: VLCStyle.dp(88, VLCStyle.scale)
+            implicitHeight: VLCStyle.dp(28, VLCStyle.scale)
+
+            // the wedge has no handle, but the slider needs one to map positions
+            handle: Item {
+                x: volControl.leftPadding + volControl.visualPosition * (volControl.availableWidth - width)
+                y: volControl.topPadding
+                width: 1
+                height: volControl.availableHeight
+            }
+
+            // Wedge shaped well, filled up to the current volume
+            background: Canvas {
+                id: wedge
+
+                readonly property real position: volControl.position
+                readonly property color wellColor: volControl.colorContext.bg.secondary
+                readonly property color fillColor: root.sliderColor
+                readonly property bool overdrive: volControl.position > root._fullvolpos
+
+                onPositionChanged: requestPaint()
+                onWellColorChanged: requestPaint()
+                onFillColorChanged: requestPaint()
+                onWidthChanged: requestPaint()
+                onHeightChanged: requestPaint()
+
+                function _wedgePath(ctx, inset) {
+                    const w = width, h = height
+                    // height of the wedge at its narrow (left) end
+                    const hl = h * 0.36
+                    ctx.beginPath()
+                    ctx.moveTo(inset, (h - hl) / 2 + inset)
+                    ctx.lineTo(w - inset, inset)
+                    ctx.lineTo(w - inset, h - inset)
+                    ctx.lineTo(inset, (h + hl) / 2 - inset)
+                    ctx.closePath()
+                }
+
+                onPaint: {
+                    const ctx = getContext("2d")
+                    const r = VLCStyle.dp(3, VLCStyle.scale)
+                    const border = VLCStyle.dp(2, VLCStyle.scale)
+
+                    ctx.reset()
+                    ctx.lineJoin = "round"
+
+                    // well
+                    ctx.lineWidth = r * 2
+                    ctx.fillStyle = wellColor
+                    ctx.strokeStyle = wellColor
+                    _wedgePath(ctx, r)
+                    ctx.fill()
+                    ctx.stroke()
+
+                    if (position <= 0)
+                        return
+
+                    // level
+                    ctx.save()
+                    ctx.beginPath()
+                    ctx.rect(0, 0, border + position * (width - 2 * border), height)
+                    ctx.clip()
+
+                    let fill = fillColor
+                    if (!overdrive) {
+                        fill = ctx.createLinearGradient(0, 0, width, 0)
+                        fill.addColorStop(0.0, "#79A512")
+                        fill.addColorStop(1.0, "#A07814")
+                    }
+                    ctx.lineWidth = (r - 1) * 2
+                    ctx.fillStyle = fill
+                    ctx.strokeStyle = fill
+                    _wedgePath(ctx, border + r - 1)
+                    ctx.fill()
+                    ctx.stroke()
+                    ctx.restore()
+                }
+            }
 
             // WARNING: Directly setting the insets break handle and background positioning.
             Binding on topInset {
@@ -110,8 +186,8 @@ T.Pane {
                 value: VLCStyle.touchHandlerMargin
             }
 
-            Layout.fillHeight: true
-            Layout.margins: VLCStyle.margin_xsmall
+            Layout.alignment: Qt.AlignVCenter
+            Layout.leftMargin: VLCStyle.margin_xxsmall
 
             property bool _inhibitPlayerVolumeUpdate: false
 
@@ -245,8 +321,8 @@ T.Pane {
                 height: parent.height
                 radius: VLCStyle.dp(2, VLCStyle.scale)
 
-                // NOTE: This shouldn't be visible when the volume stops before a 100.
-                visible: (root._maxvol > 100)
+                // NOTE: The wedge shows the volume going past 100 with its color.
+                visible: false
 
                 // FIXME: tick mark is not visible when it's over slider
                 color: root.sliderColor

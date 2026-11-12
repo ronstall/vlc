@@ -45,6 +45,17 @@ T.Control {
         pressed: mouseArea.containsPress
     }
 
+    readonly property ColorContext accentColorContext: ColorContext {
+        id: accentTheme
+
+        colorSet: ColorContext.ButtonAccent
+
+        enabled: root.enabled || root.paintOnly
+        pressed: mouseArea.containsPress
+    }
+
+    readonly property real _radius: VLCStyle.dp(6, VLCStyle.scale)
+
     property bool _keyOkPressed: false
 
     // Aliases
@@ -152,19 +163,7 @@ T.Control {
 
         hoverEnabled: true
 
-        readonly property bool cursorInside: {
-            if (!containsMouse)
-                return false
-
-            const center = (width / 2)
-            if (Helpers.pointInRadius( center - mouseX,
-                                       center - mouseY,
-                                       center )) {
-                return true
-            } else {
-                return false
-            }
-        }
+        readonly property bool cursorInside: containsMouse
 
         onCursorInsideChanged: {
             if (pressed && !cursorInside) {
@@ -217,8 +216,7 @@ T.Control {
                 return VLCIcons.play_filled
         }
 
-        color: cursorInside ? theme.accent
-                            : "black"  //foreground is always black
+        color: accentTheme.fg.primary
 
         font.pixelSize: Math.round(parent.height / 1.7)
 
@@ -240,14 +238,14 @@ T.Control {
     }
 
     background: Item {
-        implicitWidth: height
-        implicitHeight: VLCStyle.icon_medium
+        implicitWidth: VLCStyle.dp(54, VLCStyle.scale)
+        implicitHeight: VLCStyle.dp(28, VLCStyle.scale)
 
         Widgets.AnimatedBackground {
             anchors.fill: parent
             anchors.margins: -border.width * 4
 
-            radius: width / 2
+            radius: root._radius + border.width * 4
             border.pixelAligned: false
 
             enabled: theme.initialized
@@ -258,12 +256,10 @@ T.Control {
         Rectangle {
             anchors.fill: parent
 
-            radius: width / 2
+            radius: root._radius
 
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: "#e25b01" }
-                GradientStop { position: 1.0; color: "#f89a06" }
-            }
+            color: root.cursorInside && !mouseArea.pressed ? Qt.lighter(accentTheme.bg.primary, 1.1)
+                                                           : accentTheme.bg.primary
 
             Widgets.RoundedRectangleShadow {
                 id: hoverShadow
@@ -280,6 +276,9 @@ T.Control {
             Rectangle {
                 id: innerRectangle
 
+                // Only drives the press and hold timing, the block style
+                // button has no inner disc.
+                visible: false
                 color: "white"
 
                 anchors.fill: parent

@@ -101,6 +101,36 @@ T.ToolBar {
                 Navigation.parentItem: root
                 Navigation.rightItem: playqueueButtonsTop
 
+                Widgets.BannerCone {
+                    id: logo
+
+                    sourceSize.width: VLCStyle.bannerButton_height
+                    sourceSize.height: VLCStyle.bannerButton_height
+                    color: theme.accent
+                }
+
+                Widgets.IconToolButton {
+                    id: menuBtn
+
+                    visible: !MainCtx.hasToolbarMenu
+                    font.pixelSize: VLCStyle.icon_banner
+                    text: VLCIcons.ellipsis
+                    description: qsTr("Menu")
+                    width: VLCStyle.bannerButton_width
+                    height: VLCStyle.bannerButton_height
+                    checked: contextMenu.shown
+
+                    Navigation.parentItem: navigationButtons
+                    Navigation.rightItem: navigationVisibilty
+
+                    onClicked: contextMenu.popup(this.mapToGlobal(0, height))
+
+                    Menus.QmlGlobalMenu {
+                        id: contextMenu
+                        ctx: MainCtx
+                    }
+                }
+
                 Widgets.IconToolButton {
                     id: navigationVisibilty
 
@@ -118,7 +148,16 @@ T.ToolBar {
                     onClicked: root.toggleNavigationVisibility()
 
                     Navigation.parentItem: navigationButtons
+                    Navigation.leftItem: menuBtn
                     Navigation.rightItem: historyBack
+                }
+
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    width: VLCStyle.dp(1, VLCStyle.scale)
+                    height: VLCStyle.icon_normal
+                    color: theme.border
                 }
 
                 Widgets.IconToolButton {
@@ -146,12 +185,44 @@ T.ToolBar {
                     Navigation.rightItem: playlistBtn
                 }
 
-                Widgets.BannerCone {
-                    id: logo
+                Row {
+                    id: breadcrumb
 
-                    sourceSize.width: VLCStyle.bannerButton_height
-                    sourceSize.height: VLCStyle.bannerButton_height
-                    color: theme.accent
+                    // name of the library section being shown
+                    readonly property string section: {
+                        const names = {
+                            "home": qsTr("Home"),
+                            "video": qsTr("Videos"),
+                            "music": qsTr("Music"),
+                            "network": qsTr("Browse"),
+                            "discover": qsTr("Discover"),
+                            "playlists": qsTr("Playlists")
+                        }
+                        const path = History.viewPath
+                        for (let i = 0; i < path.length; ++i) {
+                            if (names[path[i]])
+                                return names[path[i]]
+                        }
+                        return ""
+                    }
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: VLCStyle.margin_xsmall
+                    visible: section !== ""
+
+                    Widgets.IconLabel {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: VLCIcons.ic_fluent_folder_open_24_regular
+                        font.pixelSize: VLCStyle.icon_banner
+                        color: theme.fg.secondary
+                    }
+
+                    T.Label {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: breadcrumb.section
+                        color: theme.fg.secondary
+                        font.pixelSize: VLCStyle.dp(13, VLCStyle.scale)
+                    }
                 }
             }
         }
@@ -189,34 +260,26 @@ T.ToolBar {
                     plListView: root.plListView
 
                     Navigation.parentItem: playqueueButtonsTop
-                    Navigation.rightItem: menuBtn
                     Navigation.leftItem: historyBack
 
                     onClicked:  root.togglePlayqueueVisibility()
                 }
 
-                Widgets.IconToolButton {
-                    id: menuBtn
-
-                    visible: !MainCtx.hasToolbarMenu
-                    font.pixelSize: VLCStyle.icon_banner
-                    text: VLCIcons.more
-                    description: qsTr("Menu")
-                    width: VLCStyle.bannerButton_width
-                    height: VLCStyle.bannerButton_height
-                    checked: contextMenu.shown
-
-                    Navigation.parentItem: playqueueButtonsTop
-                    Navigation.leftItem: playlistBtn
-
-                    onClicked: contextMenu.popup(this.mapToGlobal(0, height))
-
-                    Menus.QmlGlobalMenu {
-                        id: contextMenu
-                        ctx: MainCtx
-                    }
-                }
             }
+        }
+
+        T.Label {
+            id: centerTitle
+
+            anchors.centerIn: parent
+
+            // only when it fits between the two button groups
+            visible: (x > navigationButtons.x + navigationButtons.width)
+                     && (x + width < playqueueButtonsTop.x)
+
+            text: qsTr("VLC Media Player")
+            color: theme.fg.secondary
+            font.pixelSize: VLCStyle.dp(13, VLCStyle.scale)
         }
 
         Loader {

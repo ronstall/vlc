@@ -36,6 +36,11 @@ FocusScope {
 
     property int identifier: -1
 
+    // Optional item placed between the left and right controls, filling
+    // the space a center layout would otherwise take (requires an empty
+    // center layout)
+    property Item inlineItem: null
+
     readonly property PlayerControlbarModel model: {
         if (!!MainCtx.controlbarProfileModel.currentModel)
             return MainCtx.controlbarProfileModel.currentModel.getModel(identifier)
@@ -118,6 +123,8 @@ FocusScope {
             }
 
             Item {
+                id: filler
+
                 function containsVisibleItem(repeater) {
                     for (let i = 0; i < repeater.count; ++i) {
                         const item = repeater.itemAt(i)
@@ -133,7 +140,17 @@ FocusScope {
                                                                                                                : 0
 
                 Layout.fillWidth: true
+                Layout.fillHeight: !!playerControlLayout.inlineItem
+                Layout.leftMargin: playerControlLayout.inlineItem ? (playerControlLayout.layoutSpacing - playerControlLayout.spacing) : 0
+                Layout.rightMargin: Layout.leftMargin
                 visible: true
+
+                Binding {
+                    target: playerControlLayout.inlineItem
+                    property: "parent"
+                    value: filler
+                    when: !!playerControlLayout.inlineItem
+                }
             }
 
             ControlRepeater {
