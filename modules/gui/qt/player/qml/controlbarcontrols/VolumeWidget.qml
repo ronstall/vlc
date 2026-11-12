@@ -108,71 +108,49 @@ T.Pane {
                 height: volControl.availableHeight
             }
 
-            // Wedge shaped well, filled up to the current volume
-            background: Canvas {
+            // Wedge shaped well, filled up to the current volume.
+            // Drawn as one thin column per pixel: VLC's Qt has neither Canvas nor Shapes.
+            background: Item {
                 id: wedge
 
-                readonly property real position: volControl.position
                 readonly property color wellColor: volControl.colorContext.bg.secondary
-                readonly property color fillColor: root.sliderColor
                 readonly property bool overdrive: volControl.position > root._fullvolpos
+                readonly property int columns: Math.max(Math.round(width), 1)
+                readonly property real border: VLCStyle.dp(2, VLCStyle.scale)
+                // first column that is not filled
+                readonly property real level: volControl.position * columns
 
-                onPositionChanged: requestPaint()
-                onWellColorChanged: requestPaint()
-                onFillColorChanged: requestPaint()
-                onWidthChanged: requestPaint()
-                onHeightChanged: requestPaint()
+                Repeater {
+                    model: wedge.columns
 
-                function _wedgePath(ctx, inset) {
-                    const w = width, h = height
-                    // height of the wedge at its narrow (left) end
-                    const hl = h * 0.36
-                    ctx.beginPath()
-                    ctx.moveTo(inset, (h - hl) / 2 + inset)
-                    ctx.lineTo(w - inset, inset)
-                    ctx.lineTo(w - inset, h - inset)
-                    ctx.lineTo(inset, (h + hl) / 2 - inset)
-                    ctx.closePath()
-                }
+                    Rectangle {
+                        required property int index
 
-                onPaint: {
-                    const ctx = getContext("2d")
-                    const r = VLCStyle.dp(3, VLCStyle.scale)
-                    const border = VLCStyle.dp(2, VLCStyle.scale)
+                        readonly property real ratio: index / Math.max(wedge.columns - 1, 1)
 
-                    ctx.reset()
-                    ctx.lineJoin = "round"
+                        x: index
+                        width: 1
+                        // 36% of the height at the narrow (left) end
+                        height: wedge.height * (0.36 + 0.64 * ratio)
+                        y: (wedge.height - height) / 2
+                        color: wedge.wellColor
 
-                    // well
-                    ctx.lineWidth = r * 2
-                    ctx.fillStyle = wellColor
-                    ctx.strokeStyle = wellColor
-                    _wedgePath(ctx, r)
-                    ctx.fill()
-                    ctx.stroke()
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.topMargin: wedge.border
+                            anchors.bottomMargin: wedge.border
 
-                    if (position <= 0)
-                        return
+                            visible: parent.index < wedge.level
+                                     && parent.index >= wedge.border
+                                     && parent.index < wedge.columns - wedge.border
 
-                    // level
-                    ctx.save()
-                    ctx.beginPath()
-                    ctx.rect(0, 0, border + position * (width - 2 * border), height)
-                    ctx.clip()
-
-                    let fill = fillColor
-                    if (!overdrive) {
-                        fill = ctx.createLinearGradient(0, 0, width, 0)
-                        fill.addColorStop(0.0, "#79A512")
-                        fill.addColorStop(1.0, "#A07814")
+                            // green to olive, as in the design
+                            color: wedge.overdrive ? root.sliderColor
+                                                   : Qt.rgba(0.475 + 0.153 * parent.ratio,
+                                                             0.647 - 0.176 * parent.ratio,
+                                                             0.071 + 0.007 * parent.ratio, 1)
+                        }
                     }
-                    ctx.lineWidth = (r - 1) * 2
-                    ctx.fillStyle = fill
-                    ctx.strokeStyle = fill
-                    _wedgePath(ctx, border + r - 1)
-                    ctx.fill()
-                    ctx.stroke()
-                    ctx.restore()
                 }
             }
 
