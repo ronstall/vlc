@@ -50,6 +50,10 @@ public: // QAbstractItemModel implementation
 
     QVariant data(const QModelIndex & index, int role = Qt::DisplayRole) const override;
 
+    // Lets the user pick any local folder; returns its tree (to browse it) or
+    // an invalid variant when the dialog is cancelled.
+    Q_INVOKABLE QVariant pickFolder();
+
     Q_DECLARE_PRIVATE(StandardPathModel)
 };
 

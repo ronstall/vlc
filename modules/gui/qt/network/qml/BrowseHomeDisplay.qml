@@ -193,6 +193,24 @@ Widgets.PageExt {
             Navigation.parentItem: root
             Navigation.upItem: root.header
 
+            Widgets.ButtonExt {
+                id: openFolderButton
+
+                text: qsTr("Open folder…")
+                iconTxt: VLCIcons.ic_fluent_folder_open_24_regular
+
+                anchors.left: parent.left
+                anchors.leftMargin: VLCStyle.layout_left_margin
+
+                Navigation.parentItem: root
+
+                onClicked: {
+                    const tree = foldersSection.model.pickFolder()
+                    if (tree)
+                        root.browse(tree, Qt.MouseFocusReason)
+                }
+            }
+
             HomeDeviceTitle {
                 view: foldersSection
 

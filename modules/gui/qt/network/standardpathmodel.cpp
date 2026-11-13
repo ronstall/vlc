@@ -32,6 +32,7 @@
 #include <QAbstractListModel>
 #include <QStandardPaths>
 #include <QUrl>
+#include <QFileDialog>
 
 #include "vlcmediasourcewrapper.hpp"
 
@@ -240,4 +241,30 @@ QVariant StandardPathModel::data(const QModelIndex & index, int role) const /* o
         default:
             return NetworkBaseModel::basedata(*item, role);
     }
+}
+
+QVariant StandardPathModel::pickFolder()
+{
+    const QUrl url = QFileDialog::getExistingDirectoryUrl(nullptr, qtr("Open folder"), QUrl{},
+                                                          QFileDialog::ShowDirsOnly,
+                                                          QStringList(QStringLiteral("file")));
+    if (url.isEmpty())
+        return {};
+
+    QString name = url.fileName();
+    if (name.isEmpty())
+        name = url.toLocalFile();
+
+    input_item_t * inputItem = input_item_NewDirectory(qtu(url.toString()), qtu(name), ITEM_LOCAL);
+    if (unlikely(inputItem == nullptr))
+        return {};
+    SharedInputItem sharedItem(inputItem, false);
+
+    MediaTreePtr tree(vlc_media_tree_New(), false);
+    {
+        MediaTreeLocker lock{tree};
+        vlc_media_tree_Add(tree.get(), &(tree->root), inputItem);
+    }
+
+    return QVariant::fromValue(NetworkTreeItem(tree, sharedItem));
 }
