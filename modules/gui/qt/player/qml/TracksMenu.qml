@@ -46,6 +46,12 @@ T.Popup {
         colorSet: ColorContext.Window
     }
 
+    PlayerEffects {
+        id: effects
+
+        player: Player
+    }
+
     readonly property color _well: theme.palette.isDark ? "#0a0a0a" : theme.bg.secondary
 
     background: Rectangle {
@@ -141,13 +147,30 @@ T.Popup {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: footer.top
+            anchors.bottomMargin: VLCStyle.dp(10, VLCStyle.scale)
 
             clip: true
             contentWidth: width
             contentHeight: pages.height
             boundsBehavior: Flickable.StopAtBounds
 
-            T.ScrollBar.vertical: Widgets.ScrollBarExt { }
+            T.ScrollBar.vertical: T.ScrollBar {
+                id: scrollBar
+
+                parent: flickable
+                x: flickable.width - width - VLCStyle.dp(3, VLCStyle.scale)
+                height: flickable.height
+                width: VLCStyle.dp(4, VLCStyle.scale)
+                policy: flickable.contentHeight > flickable.height ? T.ScrollBar.AlwaysOn
+                                                                   : T.ScrollBar.AlwaysOff
+                minimumSize: 0.1
+
+                contentItem: Rectangle {
+                    radius: width / 2
+                    color: theme.fg.secondary
+                    opacity: scrollBar.pressed || scrollBar.hovered ? 0.8 : 0.4
+                }
+            }
 
             Column {
                 id: pages
@@ -188,11 +211,28 @@ T.Popup {
 
                 Divider { visible: root.currentTab === 1 }
 
-                DelaySection {
+                GroupTitle {
+                    visible: root.currentTab === 1
+                    text: qsTr("Synchronization")
+                }
+
+                PanelSlider {
                     visible: root.currentTab === 1
                     title: qsTr("Audio Track Delay")
-                    delayMS: Player.audioDelayMS
-                    onMoved: (ms) => { Player.audioDelayMS = ms }
+                    from: -10000
+                    to: 10000
+                    stepSize: 50
+                    origin: 0
+                    value: Player.audioDelayMS
+                    valueText: qsTr("%1 s").arg((value / 1000).toFixed(3))
+                    scaleLabels: [qsTr("-10 s"), qsTr("0 s"), qsTr("+10 s")]
+                    onMoved: (v) => { Player.audioDelayMS = Math.round(v) }
+                }
+
+                Divider { visible: root.currentTab === 1 }
+
+                EqualizerSection {
+                    visible: root.currentTab === 1
                 }
 
                 // Subtitles
@@ -207,11 +247,53 @@ T.Popup {
 
                 Divider { visible: root.currentTab === 2 }
 
-                DelaySection {
+                GroupTitle {
+                    visible: root.currentTab === 2
+                    text: qsTr("Synchronization")
+                }
+
+                PanelSlider {
                     visible: root.currentTab === 2
                     title: qsTr("Subtitle Track Delay")
-                    delayMS: Player.subtitleDelayMS
-                    onMoved: (ms) => { Player.subtitleDelayMS = ms }
+                    from: -10000
+                    to: 10000
+                    stepSize: 50
+                    origin: 0
+                    value: Player.subtitleDelayMS
+                    valueText: qsTr("%1 s").arg((value / 1000).toFixed(3))
+                    scaleLabels: [qsTr("-10 s"), qsTr("0 s"), qsTr("+10 s")]
+                    onMoved: (v) => { Player.subtitleDelayMS = Math.round(v) }
+                }
+
+                Divider { visible: root.currentTab === 2 }
+
+                GroupTitle {
+                    visible: root.currentTab === 2
+                    text: qsTr("Appearance")
+                }
+
+                PanelSlider {
+                    visible: root.currentTab === 2
+                    title: qsTr("Subtitle Size")
+                    from: 50
+                    to: 300
+                    stepSize: 5
+                    origin: 100
+                    value: effects.subtitleScale
+                    valueText: qsTr("%1 %").arg(Math.round(value))
+                    onMoved: (v) => { effects.subtitleScale = Math.round(v) }
+                }
+
+                PanelSlider {
+                    visible: root.currentTab === 2
+                    title: qsTr("Subtitle Height")
+                    from: 0
+                    to: 400
+                    stepSize: 5
+                    origin: 0
+                    value: effects.subtitleMargin
+                    valueText: qsTr("%1 px").arg(Math.round(value))
+                    onMoved: (v) => { effects.subtitleMargin = Math.round(v) }
                 }
             }
         }
@@ -389,24 +471,24 @@ T.Popup {
         }
     }
 
-    component DelaySection: Column {
-        id: delay
+    // label, value box (click to reset) and a horizontal slider
+    component PanelSlider: Column {
+        id: control
 
         required property string title
-        required property int delayMS
+        required property real value
+        property real from: 0
+        property real to: 100
+        property real stepSize: 1
+        // where the orange fill starts, and what a click on the value restores
+        property real origin: from
+        property string valueText: String(value)
+        property var scaleLabels: []
 
-        signal moved(int ms)
+        signal moved(real value)
 
         width: pages.width
-        topPadding: VLCStyle.dp(8, VLCStyle.scale)
-        spacing: VLCStyle.dp(8, VLCStyle.scale)
-
-        SectionTitle {
-            x: VLCStyle.dp(28, VLCStyle.scale)
-            text: qsTr("Synchronization")
-            font.pixelSize: VLCStyle.dp(15, VLCStyle.scale)
-            color: theme.fg.primary
-        }
+        spacing: VLCStyle.dp(6, VLCStyle.scale)
 
         Item {
             width: parent.width
@@ -415,11 +497,11 @@ T.Popup {
             SectionTitle {
                 anchors.left: parent.left
                 anchors.leftMargin: VLCStyle.dp(28, VLCStyle.scale)
+                anchors.right: valueBox.left
                 anchors.verticalCenter: parent.verticalCenter
-                text: delay.title
+                text: control.title
             }
 
-            // value box, click to reset
             T.AbstractButton {
                 id: valueBox
 
@@ -429,11 +511,11 @@ T.Popup {
                 width: VLCStyle.dp(140, VLCStyle.scale)
                 height: VLCStyle.dp(36, VLCStyle.scale)
 
-                Accessible.name: qsTr("Reset the delay")
+                Accessible.name: qsTr("Reset %1").arg(control.title)
 
-                onClicked: delay.moved(0)
+                onClicked: control.moved(control.origin)
 
-                T.ToolTip.visible: hovered && delay.delayMS !== 0
+                T.ToolTip.visible: hovered && control.value !== control.origin
                 T.ToolTip.text: qsTr("Click to reset")
                 T.ToolTip.delay: VLCStyle.delayToolTipAppear
 
@@ -447,7 +529,7 @@ T.Popup {
                 contentItem: T.Label {
                     leftPadding: VLCStyle.dp(14, VLCStyle.scale)
                     verticalAlignment: Text.AlignVCenter
-                    text: qsTr("%1 s").arg((delay.delayMS / 1000).toFixed(3))
+                    text: control.valueText
                     font.pixelSize: VLCStyle.dp(14, VLCStyle.scale)
                     color: theme.fg.primary
                 }
@@ -461,22 +543,23 @@ T.Popup {
             width: parent.width - 2 * x
             height: VLCStyle.dp(24, VLCStyle.scale)
 
-            from: -10000
-            to: 10000
-            stepSize: 50
+            from: control.from
+            to: control.to
+            stepSize: control.stepSize
             snapMode: T.Slider.SnapAlways
 
-            Accessible.name: delay.title
+            Accessible.name: control.title
 
             Binding on value {
                 when: !slider.pressed
-                value: Math.max(slider.from, Math.min(slider.to, delay.delayMS))
+                value: Math.max(slider.from, Math.min(slider.to, control.value))
             }
 
-            onMoved: delay.moved(Math.round(value))
+            onMoved: control.moved(value)
 
             readonly property real _handleW: VLCStyle.dp(8, VLCStyle.scale)
-            readonly property real _handleX: visualPosition * (width - _handleW)
+            readonly property real _span: width - _handleW
+            readonly property real _handleX: visualPosition * _span
 
             background: Rectangle {
                 y: (slider.height - height) / 2
@@ -485,13 +568,14 @@ T.Popup {
                 radius: VLCStyle.dp(3, VLCStyle.scale)
                 color: root._well
 
-                // fill between the zero point and the handle
                 Rectangle {
-                    readonly property real zero: (slider.width - slider._handleW) / 2 + slider._handleW / 2
+                    readonly property real zero: (control.origin - control.from) / (control.to - control.from)
+                                                 * slider._span + slider._handleW / 2
                     readonly property real pos: slider._handleX + slider._handleW / 2
                     x: Math.min(zero, pos)
                     width: Math.abs(pos - zero)
                     height: parent.height
+                    radius: parent.radius
                     color: theme.accent
                     opacity: 0.45
                 }
@@ -511,9 +595,10 @@ T.Popup {
             x: VLCStyle.dp(20, VLCStyle.scale)
             width: parent.width - 2 * x
             height: VLCStyle.dp(16, VLCStyle.scale)
+            visible: control.scaleLabels.length === 3
 
             Repeater {
-                model: [qsTr("-10 s"), qsTr("0 s"), qsTr("+10 s")]
+                model: control.scaleLabels
 
                 T.Label {
                     required property int index
@@ -523,6 +608,248 @@ T.Popup {
                     text: modelData
                     font.pixelSize: VLCStyle.dp(11, VLCStyle.scale)
                     color: theme.fg.secondary
+                }
+            }
+        }
+    }
+
+    component GroupTitle: Item {
+        property alias text: groupLabel.text
+
+        width: pages.width
+        height: VLCStyle.dp(40, VLCStyle.scale)
+
+        T.Label {
+            id: groupLabel
+
+            x: VLCStyle.dp(28, VLCStyle.scale)
+            anchors.verticalCenter: parent.verticalCenter
+            font.pixelSize: VLCStyle.dp(15, VLCStyle.scale)
+            color: theme.fg.primary
+        }
+    }
+
+    // full width row button: text on the left, chevron on the right
+    component RowButton: T.AbstractButton {
+        id: rowButton
+
+        property string chevron: VLCIcons.ic_fluent_chevron_down_24
+
+        x: VLCStyle.dp(20, VLCStyle.scale)
+        width: pages.width - 2 * x
+        height: VLCStyle.dp(44, VLCStyle.scale)
+
+        background: Rectangle {
+            color: root._well
+            radius: VLCStyle.dp(4, VLCStyle.scale)
+            border.width: VLCStyle.dp(1, VLCStyle.scale)
+            border.color: rowButton.visualFocus ? theme.accent : theme.border
+        }
+
+        contentItem: Item {
+            T.Label {
+                anchors.left: parent.left
+                anchors.leftMargin: VLCStyle.dp(16, VLCStyle.scale)
+                anchors.right: chevronLabel.left
+                anchors.verticalCenter: parent.verticalCenter
+                text: rowButton.text
+                elide: Text.ElideRight
+                font.pixelSize: VLCStyle.dp(14, VLCStyle.scale)
+                color: rowButton.hovered ? theme.fg.primary : theme.fg.secondary
+            }
+
+            Widgets.IconLabel {
+                id: chevronLabel
+
+                anchors.right: parent.right
+                anchors.rightMargin: VLCStyle.dp(12, VLCStyle.scale)
+                anchors.verticalCenter: parent.verticalCenter
+                text: rowButton.chevron
+                font.pixelSize: VLCStyle.dp(20, VLCStyle.scale)
+                color: theme.fg.secondary
+            }
+        }
+    }
+
+    component OnOffSwitch: T.AbstractButton {
+        id: onOff
+
+        width: VLCStyle.dp(64, VLCStyle.scale)
+        height: VLCStyle.dp(30, VLCStyle.scale)
+
+        checkable: false
+
+        property bool on: false
+
+        Accessible.checkable: true
+        Accessible.checked: on
+
+        background: Rectangle {
+            color: root._well
+            radius: VLCStyle.dp(4, VLCStyle.scale)
+            border.width: VLCStyle.dp(1, VLCStyle.scale)
+            border.color: onOff.visualFocus ? theme.accent : theme.border
+        }
+
+        contentItem: Item {
+            Rectangle {
+                x: onOff.on ? parent.width - width - VLCStyle.dp(3, VLCStyle.scale)
+                            : VLCStyle.dp(3, VLCStyle.scale)
+                anchors.verticalCenter: parent.verticalCenter
+                width: VLCStyle.dp(26, VLCStyle.scale)
+                height: parent.height - VLCStyle.dp(6, VLCStyle.scale)
+                radius: VLCStyle.dp(3, VLCStyle.scale)
+                color: onOff.on ? theme.accent : theme.fg.secondary
+                opacity: onOff.on ? 1 : 0.5
+            }
+
+            T.Label {
+                x: onOff.on ? VLCStyle.dp(8, VLCStyle.scale)
+                            : parent.width - width - VLCStyle.dp(8, VLCStyle.scale)
+                anchors.verticalCenter: parent.verticalCenter
+                text: onOff.on ? qsTr("ON") : qsTr("OFF")
+                font.pixelSize: VLCStyle.dp(11, VLCStyle.scale)
+                color: theme.fg.secondary
+            }
+        }
+    }
+
+    component EqualizerSection: Column {
+        id: equalizer
+
+        property bool presetsOpen: false
+        property bool bandsOpen: false
+
+        width: pages.width
+        spacing: VLCStyle.dp(8, VLCStyle.scale)
+
+        Item {
+            width: parent.width
+            height: VLCStyle.dp(40, VLCStyle.scale)
+
+            T.Label {
+                x: VLCStyle.dp(28, VLCStyle.scale)
+                anchors.verticalCenter: parent.verticalCenter
+                text: qsTr("Equalizer")
+                font.pixelSize: VLCStyle.dp(15, VLCStyle.scale)
+                color: theme.fg.primary
+            }
+
+            OnOffSwitch {
+                anchors.right: parent.right
+                anchors.rightMargin: VLCStyle.dp(20, VLCStyle.scale)
+                anchors.verticalCenter: parent.verticalCenter
+
+                Accessible.name: qsTr("Equalizer")
+
+                on: effects.equalizerEnabled
+                onClicked: effects.equalizerEnabled = !effects.equalizerEnabled
+            }
+        }
+
+        RowButton {
+            text: effects.preset >= 0 ? effects.presetNames[effects.preset] : qsTr("Custom")
+            chevron: equalizer.presetsOpen ? VLCIcons.ic_fluent_chevron_up_24
+                                           : VLCIcons.ic_fluent_chevron_down_24
+            Accessible.name: qsTr("Equalizer preset")
+            onClicked: equalizer.presetsOpen = !equalizer.presetsOpen
+        }
+
+        Column {
+            width: parent.width
+            visible: equalizer.presetsOpen
+
+            Repeater {
+                model: equalizer.presetsOpen ? effects.presetNames : []
+
+                T.AbstractButton {
+                    id: presetRow
+
+                    required property int index
+                    required property string modelData
+
+                    width: equalizer.width
+                    height: VLCStyle.dp(36, VLCStyle.scale)
+
+                    Accessible.name: modelData
+
+                    onClicked: {
+                        effects.preset = index
+                        effects.equalizerEnabled = true
+                        equalizer.presetsOpen = false
+                    }
+
+                    background: Rectangle {
+                        color: theme.fg.primary
+                        opacity: presetRow.hovered || presetRow.visualFocus ? 0.06 : 0
+                    }
+
+                    contentItem: Item {
+                        Widgets.IconLabel {
+                            x: VLCStyle.dp(26, VLCStyle.scale)
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: effects.preset === presetRow.index
+                            text: VLCIcons.check
+                            font.pixelSize: VLCStyle.dp(18, VLCStyle.scale)
+                            color: theme.accent
+                        }
+
+                        T.Label {
+                            x: VLCStyle.dp(62, VLCStyle.scale)
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: presetRow.modelData
+                            font.pixelSize: VLCStyle.dp(14, VLCStyle.scale)
+                            color: theme.fg.primary
+                        }
+                    }
+                }
+            }
+        }
+
+        RowButton {
+            text: equalizer.bandsOpen ? qsTr("Collapse Settings") : qsTr("Expand Settings")
+            chevron: equalizer.bandsOpen ? VLCIcons.ic_fluent_chevron_down_24
+                                         : VLCIcons.ic_fluent_chevron_right_24
+            onClicked: equalizer.bandsOpen = !equalizer.bandsOpen
+        }
+
+        Column {
+            width: parent.width
+            visible: equalizer.bandsOpen
+            spacing: VLCStyle.dp(2, VLCStyle.scale)
+
+            PanelSlider {
+                title: qsTr("Preamp")
+                from: -20
+                to: 20
+                stepSize: 0.5
+                origin: 12
+                value: effects.preamp
+                valueText: qsTr("%1 dB").arg((Math.round(value * 10) / 10 || 0).toFixed(1))
+                onMoved: (v) => {
+                    effects.preamp = v
+                    effects.equalizerEnabled = true
+                }
+            }
+
+            Repeater {
+                model: equalizer.bandsOpen ? effects.bandNames : []
+
+                PanelSlider {
+                    required property int index
+                    required property string modelData
+
+                    title: modelData
+                    from: -20
+                    to: 20
+                    stepSize: 0.5
+                    origin: 0
+                    value: effects.bands[index]
+                    valueText: qsTr("%1 dB").arg((Math.round(value * 10) / 10 || 0).toFixed(1))
+                    onMoved: (v) => {
+                        effects.setBand(index, v)
+                        effects.equalizerEnabled = true
+                    }
                 }
             }
         }
