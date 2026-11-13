@@ -65,8 +65,12 @@ Widgets.IconToolButton {
 
             parent: root._parentItem
 
-            x: 0
-            y: (parent.positionSliderY - height)
+            readonly property real _gap: VLCStyle.dp(12, VLCStyle.scale)
+
+            x: parent.width - width - _gap
+            y: parent.positionSliderY - height - _gap
+
+            _maxHeight: Math.max(parent.positionSliderY - 2 * _gap, VLCStyle.dp(160, VLCStyle.scale))
             z: 1
 
             focus: true
