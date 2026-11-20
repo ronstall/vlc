@@ -2163,7 +2163,7 @@ vlc_module_begin ()
               AUTOSTART_TEXT, AUTOSTART_LONGTEXT )
     add_bool( "playlist-cork", true, CORK_TEXT, CORK_LONGTEXT )
 #if defined(_WIN32) || defined(HAVE_DBUS) || defined(__OS2__)
-    add_bool( "one-instance", false, ONEINSTANCE_TEXT,
+    add_bool( "one-instance", true, ONEINSTANCE_TEXT,
               ONEINSTANCE_LONGTEXT )
     add_bool( "started-from-file", false, STARTEDFROMFILE_TEXT,
               STARTEDFROMFILE_LONGTEXT )
