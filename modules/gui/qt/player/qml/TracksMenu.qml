@@ -188,6 +188,60 @@ T.Popup {
                     onAction: DialogsProvider.loadVideoFile()
                 }
 
+                Divider { visible: root.currentTab === 0 }
+
+                GroupTitle {
+                    visible: root.currentTab === 0
+                    text: qsTr("Picture")
+                }
+
+                T.Label {
+                    x: VLCStyle.dp(28, VLCStyle.scale)
+                    width: pages.width - 2 * x
+                    visible: root.currentTab === 0 && aspectChoice.count === 0
+                    wrapMode: Text.WordWrap
+                    text: qsTr("These settings appear while a video is playing.")
+                    font.pixelSize: VLCStyle.dp(13, VLCStyle.scale)
+                    color: theme.fg.secondary
+                }
+
+                ChoiceSection {
+                    id: aspectChoice
+                    visible: root.currentTab === 0 && count > 0
+                    title: qsTr("Aspect Ratio")
+                    choiceModel: Player.aspectRatio
+                }
+
+                ChoiceSection {
+                    visible: root.currentTab === 0 && count > 0
+                    title: qsTr("Crop")
+                    choiceModel: Player.crop
+                }
+
+                ChoiceSection {
+                    visible: root.currentTab === 0 && count > 0
+                    title: qsTr("Zoom")
+                    choiceModel: Player.zoom
+                }
+
+                ChoiceSection {
+                    visible: root.currentTab === 0 && count > 0
+                    title: qsTr("Fit")
+                    choiceModel: Player.fit
+                }
+
+                ChoiceSection {
+                    visible: root.currentTab === 0 && count > 0
+                    title: qsTr("Deinterlace")
+                    choiceModel: Player.deinterlace
+                }
+
+                ChoiceSection {
+                    visible: root.currentTab === 0 && count > 0
+                    title: qsTr("Deinterlace Mode")
+                    choiceModel: Player.deinterlaceMode
+                }
+
                 // Audio
                 TrackSection {
                     visible: root.currentTab === 1
@@ -207,6 +261,12 @@ T.Popup {
                     title: qsTr("Output Device")
                     allowNone: false
                     tracksModel: Player.audioDevices
+                }
+
+                ChoiceSection {
+                    visible: root.currentTab === 1 && count > 0
+                    title: qsTr("Stereo Mode")
+                    choiceModel: Player.audioStereoMode
                 }
 
                 Divider { visible: root.currentTab === 1 }
@@ -263,6 +323,19 @@ T.Popup {
                     valueText: qsTr("%1 s").arg((value / 1000).toFixed(3))
                     scaleLabels: [qsTr("-10 s"), qsTr("0 s"), qsTr("+10 s")]
                     onMoved: (v) => { Player.subtitleDelayMS = Math.round(v) }
+                }
+
+                PanelSlider {
+                    visible: root.currentTab === 2
+                    title: qsTr("Subtitle Speed")
+                    from: 0.5
+                    to: 1.5
+                    stepSize: 0.01
+                    origin: 1
+                    value: Player.subtitleFPS
+                    valueText: qsTr("%1 x").arg(value.toFixed(2))
+                    scaleLabels: [qsTr("0.5 x"), qsTr("1 x"), qsTr("1.5 x")]
+                    onMoved: (v) => { Player.subtitleFPS = Math.round(v * 100) / 100 }
                 }
 
                 Divider { visible: root.currentTab === 2 }
@@ -608,6 +681,103 @@ T.Popup {
                     text: modelData
                     font.pixelSize: VLCStyle.dp(11, VLCStyle.scale)
                     color: theme.fg.secondary
+                }
+            }
+        }
+    }
+
+    // a label with the current choice; clicking it lists the choices
+    component ChoiceSection: Column {
+        id: choice
+
+        required property string title
+        required property var choiceModel
+        property bool open: false
+        property string currentText: ""
+        readonly property alias count: choiceRepeater.count
+
+        width: pages.width
+        spacing: VLCStyle.dp(4, VLCStyle.scale)
+        bottomPadding: VLCStyle.dp(8, VLCStyle.scale)
+
+        Item {
+            width: parent.width
+            height: VLCStyle.dp(30, VLCStyle.scale)
+
+            SectionTitle {
+                anchors.left: parent.left
+                anchors.leftMargin: VLCStyle.dp(28, VLCStyle.scale)
+                anchors.bottom: parent.bottom
+                text: choice.title
+            }
+        }
+
+        RowButton {
+            text: choice.currentText !== "" ? choice.currentText : qsTr("Default")
+            chevron: choice.open ? VLCIcons.ic_fluent_chevron_up_24
+                                 : VLCIcons.ic_fluent_chevron_down_24
+            Accessible.name: choice.title
+            onClicked: choice.open = !choice.open
+        }
+
+        Repeater {
+            id: choiceRepeater
+
+            model: choice.choiceModel
+
+            T.AbstractButton {
+                id: choiceRow
+
+                required property var model
+                required property int index
+
+                readonly property bool isChecked: !!model.checked
+
+                function syncCurrent() {
+                    if (isChecked)
+                        choice.currentText = model.display
+                }
+
+                onIsCheckedChanged: syncCurrent()
+                Component.onCompleted: syncCurrent()
+
+                visible: choice.open
+                width: choice.width
+                height: VLCStyle.dp(36, VLCStyle.scale)
+
+                Accessible.name: model.display
+                Accessible.checkable: true
+                Accessible.checked: isChecked
+
+                onClicked: {
+                    model.checked = true
+                    choice.open = false
+                }
+
+                background: Rectangle {
+                    color: theme.fg.primary
+                    opacity: choiceRow.hovered || choiceRow.visualFocus ? 0.06 : 0
+                }
+
+                contentItem: Item {
+                    Widgets.IconLabel {
+                        x: VLCStyle.dp(26, VLCStyle.scale)
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: choiceRow.isChecked
+                        text: VLCIcons.check
+                        font.pixelSize: VLCStyle.dp(18, VLCStyle.scale)
+                        color: theme.accent
+                    }
+
+                    T.Label {
+                        x: VLCStyle.dp(62, VLCStyle.scale)
+                        width: parent.width - x - VLCStyle.dp(20, VLCStyle.scale)
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: choiceRow.model.display
+                        elide: Text.ElideRight
+                        font.pixelSize: VLCStyle.dp(14, VLCStyle.scale)
+                        color: theme.fg.primary
+                    }
                 }
             }
         }
