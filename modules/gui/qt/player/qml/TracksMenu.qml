@@ -52,7 +52,7 @@ T.Popup {
         player: Player
     }
 
-    readonly property color _well: theme.palette.isDark ? "#0a0a0a" : theme.bg.secondary
+    readonly property color _well: theme.palette.isDark ? "#0a0a0a" : "#e2e2e2"
 
     background: Rectangle {
         color: theme.bg.primary
