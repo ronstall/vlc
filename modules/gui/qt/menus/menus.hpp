@@ -77,6 +77,10 @@ public:
     /* All main Menus */
     static void FileMenu( qt_intf_t *, QMenu * );
 
+    /* the redesign's single "..." menu: open entries first, then the
+     * classic menus grouped at the end */
+    static void MainMenu( qt_intf_t *, QMenu * );
+
     static void ToolsMenu( qt_intf_t *, QMenu * );
 
     static void ViewMenu(qt_intf_t *, QMenu *);

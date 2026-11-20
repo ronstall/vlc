@@ -548,6 +548,95 @@ void VLCMenuBar::RebuildNavigMenu( qt_intf_t *p_intf, QMenu *menu )
 }
 
 /**
+ * Main "..." menu of the redesign
+ **/
+void VLCMenuBar::MainMenu( qt_intf_t *p_intf, QMenu *menu )
+{
+    auto mi = p_intf->p_mi;
+
+    addDPStaticEntry( menu, qtr( "Open File..." ),
+        ":/menu/file.svg", []() { THEDP->simpleOpenDialog(); } , "Ctrl+O" );
+    addDPStaticEntry( menu, qtr( "Open Multiple Files..." ),
+        ":/menu/file.svg", &DialogsProvider::openFileDialog, "Ctrl+Shift+O" );
+    addDPStaticEntry( menu, qtr( "Open Directory..." ),
+        ":/menu/folder.svg", &DialogsProvider::PLOpenDir, "Ctrl+F" );
+    addDPStaticEntry( menu, qtr( "Open Disc..." ),
+        ":/menu/disc.svg", &DialogsProvider::openDiscDialog, "Ctrl+D" );
+    addDPStaticEntry( menu, qtr( "Open Network Stream..." ),
+        ":/menu/network.svg", &DialogsProvider::openNetDialog, "Ctrl+N" );
+    addDPStaticEntry( menu, qtr( "Open Capture Device..." ),
+        ":/menu/capture-card.svg", &DialogsProvider::openCaptureDialog, "Ctrl+C" );
+    addDPStaticEntry( menu, qtr( "Open Location from Clipboard" ),
+        ":/menu/add.svg", &DialogsProvider::openUrlDialog, "Ctrl+V" );
+
+    if( mi && var_InheritBool( p_intf, "save-recentplay" ) && mi->hasMediaLibrary() )
+    {
+        MLRecentMediaModel* recentModel = new MLRecentMediaModel(nullptr);
+        recentModel->setMl(mi->getMediaLibrary());
+        recentModel->setLimit(10);
+        QMenu* recentsMenu = new RecentMenu(recentModel, mi->getMediaLibrary(), menu);
+        recentsMenu->setTitle( qtr( "Open Recent" ) );
+        recentsMenu->setIcon( ColorizedSvgIcon::colorizedIconForWidget( ":/menu/sync.svg", menu ) );
+        recentModel->setParent(recentsMenu);
+        menu->addMenu( recentsMenu );
+    }
+
+    menu->addSeparator();
+
+    addDPStaticEntry( menu, qtr( "Convert / Save..." ), ":/menu/download.svg",
+        &DialogsProvider::openAndTranscodingDialogs, "Ctrl+R" );
+    addDPStaticEntry( menu, qtr( "Stream..." ),
+        ":/menu/stream.svg", &DialogsProvider::openAndStreamingDialogs, "Ctrl+S" );
+    addDPStaticEntry( menu, qtr( "Save Playlist..." ), ":/menu/ic_playlist.svg",
+        &DialogsProvider::savePlayingToPlaylist, "Ctrl+Y" );
+
+    menu->addSeparator();
+
+    if( !p_intf->b_isDialogProvider )
+        addDPStaticEntry( menu, qtr( "Customize Player..." ),
+            ":/menu/profile_new.svg", &DialogsProvider::showToolbarEditorDialog );
+    addDPStaticEntry( menu, qtr( "Plugins and Extensions" ),
+        ":/menu/ic_fluent_options.svg", &DialogsProvider::pluginDialog );
+    addDPStaticEntry( menu, qtr( "Settings" ),
+        ":/menu/preferences.svg", &DialogsProvider::prefsDialog, "Ctrl+P",
+        QAction::PreferencesRole );
+
+    menu->addSeparator();
+
+    /* everything the old menu bar had, out of the way */
+    QMenu* more = menu->addMenu( qtr( "More" ) );
+    more->setIcon( ColorizedSvgIcon::colorizedIconForWidget( ":/menu/media_library.svg", menu ) );
+    FileMenu( p_intf, more->addMenu( qtr( "Media" ) ) );
+    NavigMenu( p_intf, more->addMenu( qtr( "Playback" ) ) );
+    AudioMenu( p_intf, more->addMenu( qtr( "Audio" ) ) );
+    VideoMenu( p_intf, more->addMenu( qtr( "Video" ) ) );
+    SubtitleMenu( p_intf, more->addMenu( qtr( "Subtitle" ) ) );
+    ToolsMenu( p_intf, more->addMenu( qtr( "Tools" ) ) );
+    ViewMenu( p_intf, more->addMenu( qtr( "View" ) ) );
+
+    menu->addSeparator();
+
+    addDPStaticEntry( menu, qtr( "Help" ),
+        ":/menu/help.svg", &DialogsProvider::helpDialog, "F1" );
+    addDPStaticEntry( menu, qtr( "About Claude VLC" ), ":/menu/info.svg",
+        &DialogsProvider::aboutDialog, "Shift+F1", QAction::AboutRole );
+    addDPStaticEntry( menu, qtr( "Quit" ),
+        ":/menu/exit.svg", &DialogsProvider::quit, "Ctrl+Q" );
+
+    /* flat dark look of the redesign; light schemes keep the native style */
+    if( menu->palette().color( QPalette::Window ).lightness() < 128 )
+        menu->setStyleSheet( QStringLiteral(
+            "QMenu { background: #161616; color: #d6d6d6; border: 1px solid #2a2a2a;"
+            " border-radius: 8px; padding: 6px; }"
+            "QMenu::item { padding: 7px 28px 7px 10px; border-radius: 4px; background: transparent; }"
+            "QMenu::item:selected { background: #2a2a2a; color: #ffffff; }"
+            "QMenu::item:disabled { color: #5a5a5a; }"
+            "QMenu::icon { padding-left: 8px; }"
+            "QMenu::separator { height: 1px; background: #2a2a2a; margin: 5px 6px; }"
+            "QMenu::right-arrow { width: 10px; height: 10px; }" ) );
+}
+
+/**
  * Help/About Menu
 **/
 void VLCMenuBar::HelpMenu(qt_intf_t *p_intf, QMenu *menu )
