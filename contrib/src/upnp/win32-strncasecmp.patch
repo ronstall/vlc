@@ -1,18 +1,24 @@
-Use _strnicmp for strncasecmp on Windows
+Include the C headers before the POSIX name macros on Windows
 
-With recent mingw-w64, mapping strncasecmp to strnicmp ends up calling
-itself, and GCC compiles token_string_casecmp() into an endless loop.
-Any UPnP device on the network then keeps a discovery thread spinning
+posix_overwrites.h defines strnicmp and stricmp as _strnicmp and
+_stricmp. When it is included before <string.h>, mingw-w64's inline
+strnicmp() wrapper is macro-expanded into a _strnicmp() that calls
+itself, and GCC compiles every strncasecmp() into an endless loop.
+A UPnP device on the network then keeps a discovery thread spinning
 and VLC can never quit.
 
---- a/upnp/src/inc/uri.h
-+++ b/upnp/src/inc/uri.h
-@@ -61,7 +61,7 @@
- #endif
+--- a/ixml/inc/posix_overwrites.h
++++ b/ixml/inc/posix_overwrites.h
+@@ -3,6 +3,12 @@
  
  #ifdef _WIN32
--	#define strncasecmp strnicmp
-+	#define strncasecmp _strnicmp
- #else
- 	/* Other systems have strncasecmp */
- #endif
+ 
++	/* declare the real functions before renaming them */
++	#include <io.h>
++	#include <stdio.h>
++	#include <stdlib.h>
++	#include <string.h>
++
+ 	/* POSIX names for functions */
+ 	#define fileno _fileno
+ 	#define unlink _unlink
