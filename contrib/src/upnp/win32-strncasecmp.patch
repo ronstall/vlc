@@ -1,0 +1,18 @@
+Use _strnicmp for strncasecmp on Windows
+
+With recent mingw-w64, mapping strncasecmp to strnicmp ends up calling
+itself, and GCC compiles token_string_casecmp() into an endless loop.
+Any UPnP device on the network then keeps a discovery thread spinning
+and VLC can never quit.
+
+--- a/upnp/src/inc/uri.h
++++ b/upnp/src/inc/uri.h
+@@ -61,7 +61,7 @@
+ #endif
+ 
+ #ifdef _WIN32
+-	#define strncasecmp strnicmp
++	#define strncasecmp _strnicmp
+ #else
+ 	/* Other systems have strncasecmp */
+ #endif
